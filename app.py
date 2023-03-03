@@ -75,12 +75,12 @@ class MainWindow(QMainWindow):
 
     def _render_images(self):
         
-        for row in range(5):
-            for col in range(5):
+        for row in range(10):
+            for col in range(10):
                 img_path = self.paginator.current_index*self.paginator.page_size
                 img = QLabel()
                 rv = np.random.choice(np.arange(0, 2), p=[0.5, 0.5])
-                img.setPixmap(QPixmap(f"sample{rv}.jpg"))
+                img.setPixmap(QPixmap(f"sample{rv}.jpg").scaled(100, 100, Qt.KeepAspectRatio))
                 self.image_container.layout().addWidget(img, row, col )
             print(img_path, end=" , ")           
 
