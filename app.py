@@ -3,6 +3,33 @@ from PySide2.QtGui import QPixmap
 from PySide2.QtCore import QSize, Qt
 import numpy as np
 import sys
+from pathlib import Path
+import io
+from PIL import Image, ImageCms
+from PIL.ImageQt import ImageQt
+
+def load_image(path):
+    if Path(path).is_file():
+        return ImageQt(path)
+
+
+
+def convert_to_srgb(file_path):
+        '''Convert PIL image to sRGB color space (if possible)'''
+        img = Image.open(file_path)
+        icc = img.info.get('icc_profile', '')
+        if icc:
+            io_handle = io.BytesIO(icc)     # virtual file
+            src_profile = ImageCms.ImageCmsProfile(io_handle)
+            dst_profile = ImageCms.createProfile('sRGB')
+            img_conv = ImageCms.profileToProfile(img, src_profile, dst_profile)
+            icc_conv = img_conv.info.get('icc_profile','')
+        if icc != icc_conv:
+            # ICC profile was changed -> save converted file
+            img_conv.save(file_path,
+                        format = 'JPEG',
+                        quality = 50,
+                        icc_profile = icc_conv)
 
 
 class Paginator(QWidget):
@@ -55,7 +82,7 @@ class MainWindow(QMainWindow):
         self.image_container.setLayout(QGridLayout())
         self.image_container.setObjectName("image_container")
         self.paginator = Paginator(self, 1000, 100)
-        self.paginator.setFixedSize(QSize(400, 40))
+        self.paginator.setFixedSize(QSize(1326, 40))
         self.paginator.setStyleSheet("""
         QFrame#paginator_box{
         background-color : grey; border : 2px solid black; border-radius : 8px;
@@ -72,17 +99,26 @@ class MainWindow(QMainWindow):
         """)
         self._render_images()
         self.setCentralWidget(self.container)
+        self.image_list = [  [ None  for col in range(10) ] for row in range(10)  ]
 
     def _render_images(self):
         
         for row in range(10):
             for col in range(10):
-                img_path = self.paginator.current_index*self.paginator.page_size
-                img = QLabel()
+                img = None
+                try:
+                    img_path = self.paginator.current_index*self.paginator.page_size
+                    img = self.image_list[row][col]
+                    if not img:
+                        raise ValueError
+                except Exception as e:
+                    img = QLabel()
+                    
                 rv = np.random.choice(np.arange(0, 2), p=[0.5, 0.5])
-                img.setPixmap(QPixmap(f"sample{rv}.jpg").scaled(100, 100, Qt.KeepAspectRatio))
+                img_pm = QPixmap(f"sample{rv}.jpg")
+                img.setPixmap(img_pm.scaled(100, 100, Qt.KeepAspectRatio))
                 self.image_container.layout().addWidget(img, row, col )
-            print(img_path, end=" , ")           
+            # print(img_path, end=" , ")           
 
     def update_page(self):
         self._render_images()
@@ -94,6 +130,5 @@ if __name__ == '__main__':
     window = MainWindow()
     window.show()
     sys.exit(app.exec_())
-
 
 
